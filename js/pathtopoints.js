@@ -25,7 +25,7 @@ function setupCanvas() {
 
 function setupDropzone() {
     document.getElementById('dropzone').addEventListener('drop', manageDropFromTitle, false);
-    
+
     $('#dropzone').dropzone({
         url: "/upload",
         maxFilesize: 5,
@@ -54,7 +54,7 @@ function setupDropzone() {
                 read.onloadend = function() {
                     current_svg_xml = read.result;
                     setTimeout(generatePointsFromSvg, msToWaitAfterOverlay);
-                }   
+                }
             });
         }
     });
@@ -65,7 +65,7 @@ function hideHoldOnOverlay() {
 }
 
 function displayHoldOnOverlay(msg) {
-    HoldOn.open({message: msg});
+    HoldOn.open({ message: msg });
     $(".note").hide();
 }
 
@@ -83,54 +83,54 @@ function removeItemFromDropzone() {
 function setupGenerationFromText() {
     $('#btn-text').click(function() {
         $("#dialog-generate-from-text").dialog({
-        resizable: false,
-        height: "auto",
-        width: 400,
-        modal: true,
-        buttons: {
-            "Generate": function() {
-                displayHoldOnOverlay("Generating points from text");
-                $(this).dialog("close");
+            resizable: false,
+            height: "auto",
+            width: 400,
+            modal: true,
+            buttons: {
+                "Generate": function() {
+                    displayHoldOnOverlay("Generating points from text");
+                    $(this).dialog("close");
 
-                setTimeout(function () {
-                    removeItemFromDropzone();
+                    setTimeout(function() {
+                        removeItemFromDropzone();
 
-                    var font_selected = "fonts/" + $("#fonts").find(":selected").val();
-                    var url_font = $("#url_font").val();
-                    var text_svg = $("#text_svg").val();
-                    var font_size = parseInt($("#font_size").val());
+                        var font_selected = "fonts/" + $("#fonts").find(":selected").val();
+                        var url_font = $("#url_font").val();
+                        var text_svg = $("#text_svg").val();
+                        var font_size = parseInt($("#font_size").val());
 
-                    if (text_svg == "" || isNaN(font_size) || font_size <= 0) {
-                        $.notify("Invalid fields, do you even UI ?", "error");
-                        hideHoldOnOverlay();
-                        return;
-                    }
-
-                    if (url_font == "")
-                        url_font = font_selected;
-
-                    opentype.load(url_font, function(err, font) {
-                        console.assert(!err, err);
-                        paths = font.getPaths(text_svg, ($("#dropzone").width() / 2) - (font_size * text_svg.length / 4), font_size, font_size);
-                        
-                        var svgText = "<svg class='dz-preview-manually' width='100%' height='100%'>";
-                        for (var i = 0; i < paths.length; ++i) {
-                            svgText += paths[i].toSVG();
+                        if (text_svg == "" || isNaN(font_size) || font_size <= 0) {
+                            $.notify("Invalid fields, do you even UI ?", "error");
+                            hideHoldOnOverlay();
+                            return;
                         }
-                        svgText += "</svg>";
-                        $("#dropzone").append(svgText);
 
-                        current_svg_xml = svgText;
-                        generatePointsFromSvg();
+                        if (url_font == "")
+                            url_font = font_selected;
 
-                        hideHoldOnOverlay();
-                    });
-                }, msToWaitAfterOverlay);
-            },
-            "Cancel": function() {
-                $(this).dialog("close");
+                        opentype.load(url_font, function(err, font) {
+                            console.assert(!err, err);
+                            paths = font.getPaths(text_svg, ($("#dropzone").width() / 2) - (font_size * text_svg.length / 4), font_size, font_size);
+
+                            var svgText = "<svg class='dz-preview-manually' width='100%' height='100%'>";
+                            for (var i = 0; i < paths.length; ++i) {
+                                svgText += paths[i].toSVG();
+                            }
+                            svgText += "</svg>";
+                            $("#dropzone").append(svgText);
+
+                            current_svg_xml = svgText;
+                            generatePointsFromSvg();
+
+                            hideHoldOnOverlay();
+                        });
+                    }, msToWaitAfterOverlay);
+                },
+                "Cancel": function() {
+                    $(this).dialog("close");
+                }
             }
-        }
         });
     });
 }
@@ -171,7 +171,7 @@ function getInfosFromPaths(paths) {
         // container.attr("stroke", "red");
 
         if (!initialized) {
-            initialized = true; 
+            initialized = true;
             paths_info.bbox_top = paths_info.bbox_bottom = paths_info.bbox_left = paths_info.bbox_right = bbox_path;
             continue;
         }
@@ -207,6 +207,10 @@ function getInfosFromPaths(paths) {
 }
 
 function generatePointsFromSvg() {
+    let json = "{"
+    const pathCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=[]{}|;:\'",.<>/?`~'
+    let pathCharactersArray = pathCharacters.split('');
+
     paper.clear();
     $('.bellows').remove();
     $('#settings').after("<div class='bellows'></div>");
@@ -223,50 +227,83 @@ function generatePointsFromSvg() {
     var offset_path_y = (paths_info.y * paths_info.scale * -1) + (paper.canvas.clientHeight / 2) - (paths_info.height * paths_info.scale / 2);
     var all_points = "";
     var all_points_count = 0;
+
+    let maxWidth = 0;
+    let maxHeight = 0;
+
     for (var i = 0; i < paths.length; ++i) {
         var path = $($(paths).get(i)).attr('d').replace(' ', ',');
+
+        json += "\"" + pathCharactersArray[i].trim() + "\": ["
 
         // get points at regular intervals
         var data_points = "";
         var color = randomColor();
         var c;
+
+        let pathBounds = Raphael.pathBBox(path);
+        console.log(pathBounds)
+
+        if (pathBounds.width > maxWidth) {
+            maxWidth = pathBounds.width;
+        }
+
+        if (pathBounds.height > maxHeight) {
+            maxHeight = pathBounds.height;
+        }
+
+
         for (c = 0; c < Raphael.getTotalLength(path); c += step_point) {
             var point = Raphael.getPointAtLength(path, c);
 
-            data_points += point.x + "," + point.y + "&#13;";
+            px = (point.x - pathBounds.x).toFixed(2);
+            py = (point.y).toFixed(2);
+
+            data_points += px + "," + py + "&#13;";
+            json += "[" + px + "," + py + "],"
             var circle = paper.circle(point.x * paths_info.scale, point.y * paths_info.scale, 2)
                 .attr("fill", color)
                 .attr("stroke", "none")
                 .transform("T" + offset_path_x * paths_info.scale + "," + offset_path_y * paths_info.scale);
         }
-
+        json = json.slice(0, -1);
         all_points_count += c;
         all_points += data_points + "#&#13;";
+        json += "],"
         addBelow("Path " + i, color, data_points, c / step_point);
     }
+    json += "\"settings\": {"
+    json += "\"maxWidth\": " + maxWidth + ","
+    json += "\"maxHeight\": " + maxHeight + ","
+    json += "\"step\": " + step_point
+    json += "}}"
+
+    console.log("Formated Paths with Labels: " + pathCharacters)
+    console.log("JSON: ")
+    console.log(json)
 
     addBelow("All Paths", "#2A2A2A", all_points, all_points_count / step_point);
-    
+
     $('.bellows').bellows();
     hideHoldOnOverlay();
 }
 
 function addBelow(name, color, data, nb_pts) {
-      var below = "";
-      
-      below += "<div class='bellows__item'><div class='bellows__header' style='background-color:" + color + "'>";
-      below += name ;
-      below += "<span>" + nb_pts + " pts</span>";
-      below += "</div><div class='bellows__content'>";
-      below += "<textarea rows='10' cols='50'>" + data + "</textarea></div></div>";
+    var below = "";
 
-      $('.bellows').append(below);
-  }
+    below += "<div class='bellows__item'><div class='bellows__header' style='background-color:" + color + "'>";
+    below += name;
+    below += "<span>" + nb_pts + " pts</span>";
+    below += "</div><div class='bellows__content'>";
+    below += "<textarea rows='10' cols='50'>" + data + "</textarea></div></div>";
+
+    $('.bellows').append(below);
+}
 
 // Hacky function to manage "fake" drop from image title
 function manageDropFromTitle(evt) {
     var svgUrl = evt.dataTransfer.getData('URL');
-    
+
     // Load local svg file from URL
     if (svgUrl.endsWith("img/TitlePathToPoints.svg")) {
         removeItemFromDropzone();

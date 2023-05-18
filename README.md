@@ -1,10 +1,9 @@
 # PathToPoints
 SVG Paths to array of points - https://shinao.github.io/PathToPoints/
-
+Fork by Iqwertz to easier export paths for functions to gcode.
 Extract points from SVG paths or generate them from a text.
 
-### Preview
-![Preview](/docs/preview_path_to_points.gif)
+Text svg can be generated here: https://jvolker.github.io/single-line-font-renderer/ 
 
 ### Capacities
 You can either get each path array of points seperately each differentiated by a color or all of them at the end of the tabs.
