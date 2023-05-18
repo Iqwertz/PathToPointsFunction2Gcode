@@ -233,8 +233,10 @@ function generatePointsFromSvg() {
 
     for (var i = 0; i < paths.length; ++i) {
         var path = $($(paths).get(i)).attr('d').replace(' ', ',');
+        console.log(pathCharactersArray[i].trim())
 
-        json += "\"" + pathCharactersArray[i].trim() + "\": ["
+        json += "\"" + pathCharactersArray[i].trim() + "\": {"
+
 
         // get points at regular intervals
         var data_points = "";
@@ -242,7 +244,7 @@ function generatePointsFromSvg() {
         var c;
 
         let pathBounds = Raphael.pathBBox(path);
-        console.log(pathBounds)
+        json += "\"bounds\": " + JSON.stringify(pathBounds) + ",\"paths\": ["
 
         if (pathBounds.width > maxWidth) {
             maxWidth = pathBounds.width;
@@ -253,24 +255,31 @@ function generatePointsFromSvg() {
         }
 
 
-        for (c = 0; c < Raphael.getTotalLength(path); c += step_point) {
-            var point = Raphael.getPointAtLength(path, c);
+        let pathSegments = path.split(/(?=M)/g);
 
-            px = (point.x - pathBounds.x).toFixed(2);
-            py = (point.y).toFixed(2);
+        for (segment of pathSegments) {
+            json += "{\"points\": ["
+            for (c = 0; c < Raphael.getTotalLength(segment); c += step_point) {
+                var point = Raphael.getPointAtLength(segment, c);
 
-            data_points += px + "," + py + "&#13;";
-            json += "[" + px + "," + py + "],"
-            var circle = paper.circle(point.x * paths_info.scale, point.y * paths_info.scale, 2)
-                .attr("fill", color)
-                .attr("stroke", "none")
-                .transform("T" + offset_path_x * paths_info.scale + "," + offset_path_y * paths_info.scale);
+                px = (point.x - pathBounds.x).toFixed(2);
+                py = (point.y - maxHeight).toFixed(2); //A bit hacky since the maxHeight is only determind after the loop, but since only special characters have a specific maxHeight, it should be fine
+
+                data_points += px + "," + py + "&#13;";
+                json += "[" + px + "," + py + "],"
+                var circle = paper.circle(point.x * paths_info.scale, point.y * paths_info.scale, 2)
+                    .attr("fill", color)
+                    .attr("stroke", "none")
+                    .transform("T" + offset_path_x * paths_info.scale + "," + offset_path_y * paths_info.scale);
+            }
+            json = json.slice(0, -1);
+            all_points_count += c;
+            all_points += data_points + "#&#13;";
+            json += "]},"
+            addBelow("Path " + i, color, data_points, c / step_point);
         }
         json = json.slice(0, -1);
-        all_points_count += c;
-        all_points += data_points + "#&#13;";
-        json += "],"
-        addBelow("Path " + i, color, data_points, c / step_point);
+        json += "]},"
     }
     json += "\"settings\": {"
     json += "\"maxWidth\": " + maxWidth + ","
